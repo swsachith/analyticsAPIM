@@ -1,0 +1,16 @@
+{
+  "name": "debugAlertStream",
+  "version": "1.0.0",
+  "nickName": "",
+  "description": "",
+  "payloadData": [
+    {
+      "name": "a",
+      "type": "LONG"
+    },
+    {
+      "name": "b",
+      "type": "LONG"
+    }
+  ]
+}

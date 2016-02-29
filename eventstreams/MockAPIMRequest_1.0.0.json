@@ -1,0 +1,28 @@
+{
+  "name": "MockAPIMRequest",
+  "version": "1.0.0",
+  "nickName": "",
+  "description": "Mock request",
+  "payloadData": [
+    {
+      "name": "consumerKey",
+      "type": "STRING"
+    },
+    {
+      "name": "requestTime",
+      "type": "LONG"
+    },
+    {
+      "name": "userId",
+      "type": "STRING"
+    },
+    {
+      "name": "hostName",
+      "type": "STRING"
+    },
+    {
+      "name": "accessToken",
+      "type": "STRING"
+    }
+  ]
+}

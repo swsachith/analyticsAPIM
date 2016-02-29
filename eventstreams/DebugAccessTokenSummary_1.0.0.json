@@ -1,0 +1,32 @@
+{
+  "name": "DebugAccessTokenSummary",
+  "version": "1.0.0",
+  "nickName": "",
+  "description": "",
+  "payloadData": [
+    {
+      "name": "userId",
+      "type": "STRING"
+    },
+    {
+      "name": "consumerKey",
+      "type": "STRING"
+    },
+    {
+      "name": "accessToken",
+      "type": "STRING"
+    },
+    {
+      "name": "avrgRefreshTime",
+      "type": "LONG"
+    },
+    {
+      "name": "lastRefreshedDate",
+      "type": "LONG"
+    },
+    {
+      "name": "noRefreshed",
+      "type": "LONG"
+    }
+  ]
+}

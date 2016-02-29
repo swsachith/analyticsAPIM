@@ -1,0 +1,12 @@
+{
+  "name": "singleDebugOut",
+  "version": "1.0.0",
+  "nickName": "",
+  "description": "",
+  "payloadData": [
+    {
+      "name": "out",
+      "type": "FLOAT"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "name": "temp",
+  "version": "1.0.0",
+  "nickName": "",
+  "description": "",
+  "payloadData": [
+    {
+      "name": "c",
+      "type": "INT"
+    },
+    {
+      "name": "d",
+      "type": "INT"
+    },
+    {
+      "name": "e",
+      "type": "FLOAT"
+    }
+  ]
+}

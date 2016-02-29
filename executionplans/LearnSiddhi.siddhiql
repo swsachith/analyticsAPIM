@@ -1,0 +1,20 @@
+/* Enter a unique ExecutionPlan */
+@Plan:name('LearnSiddhi')
+
+/* Enter a unique description for ExecutionPlan */
+-- @Plan:description('ExecutionPlan')
+
+/* define streams/tables and write queries here ... */
+
+@Import('test1:1.0.0')
+define stream test (age int, a float, b float);
+
+@Import('temp:1.0.0')
+define stream Temp (c int, d int, e float);
+
+@Export('singleDebugOut:1.0.0')
+define stream debugOut (out float);
+
+from test
+select convert((age * b),'float') as out
+insert into debugOut

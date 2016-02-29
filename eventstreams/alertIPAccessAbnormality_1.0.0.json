@@ -1,0 +1,12 @@
+{
+  "name": "alertIPAccessAbnormality",
+  "version": "1.0.0",
+  "nickName": "",
+  "description": "",
+  "payloadData": [
+    {
+      "name": "message",
+      "type": "STRING"
+    }
+  ]
+}

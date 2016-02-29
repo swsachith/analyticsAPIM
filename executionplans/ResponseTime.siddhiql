@@ -1,0 +1,37 @@
+/* Enter a unique ExecutionPlan */
+@Plan:name('ResponseTime')
+
+/* Enter a unique description for ExecutionPlan */
+@Plan:description('Response time anomaly detection')
+
+/* define streams/tables and write queries here ... */
+@Import('org.wso2.apimgt.statistics.request:1.0.0')
+define stream APIM_request (meta_clientType string, consumerKey string, context string, api_version string, api string, resourcePath string, method string, version string, request int, requestTime long, userId string, tenantDomain string, hostName string, apiPublisher string, applicationName string, applicationId string, userAgent string, tier string, throttledOut bool);
+
+@from(eventtable = 'rdbms' , datasource.name = 'WSO2_CARBON_DB' , table.name = 'ResponseSummary')
+@IndexBy('userId')
+define table ResponseSummary (userId string, accessToken string, avrgRefreshTime int, lastRefreshedDate long, noRefreshed int) ;
+
+-- DEBUG
+@Export('RequestDebugStream:1.0.0')
+define stream APIMRequestDebug (meta_clientType string, consumerKey string, context string, api_version string, api string, resourcePath string, method string, version string, request int, requestTime long, userId string, tenantDomain string, hostName string, apiPublisher string, applicationName string, applicationId string, userAgent string, tier string, throttledOut bool);
+
+@Export('DebugResponseSummary:1.0.0')
+define stream DebugResponseSummary (userId string, accesToken string, avrgRefreshTime int, lastRefreshedDate long, noRefreshed int);
+
+
+-- A new user -  add the details to the summary table
+from APIM_request[userId != ResponseSummary.userId in ResponseSummary]
+--select str:concat(userId,'-NOT IN TABLE') as test
+select userId, consumerKey as accessToken, 0 as avrgRefreshTime, requestTime as lastRefreshedDate, 0 as noRefreshed
+insert into ResponseSummary;
+
+from APIM_request[userId == ResponseSummary.userId in ResponseSummary and consumerKey == ResponseSummary.accessToken in ResponseSummary]
+--select str:concat(userId,'-NOT IN TABLE') as test
+select *
+insert into APIMRequestDebug;
+
+from APIM_request[userId == ResponseSummary.userId in ResponseSummary and consumerKey != ResponseSummary.accessToken in ResponseSummary]#window.length(1) as api join ResponseSummary as rs
+on api.userId == rs.userId
+select rs.userId as userId, api.consumerKey as accesToken, 2 as avrgRefreshTime, api.requestTime as lastRefreshedDate, (rs.noRefreshed + 1) as noRefreshed
+insert into DebugResponseSummary;

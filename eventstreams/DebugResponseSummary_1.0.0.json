@@ -1,0 +1,28 @@
+{
+  "name": "DebugResponseSummary",
+  "version": "1.0.0",
+  "nickName": "",
+  "description": "",
+  "payloadData": [
+    {
+      "name": "userId",
+      "type": "STRING"
+    },
+    {
+      "name": "accesToken",
+      "type": "STRING"
+    },
+    {
+      "name": "avrgRefreshTime",
+      "type": "INT"
+    },
+    {
+      "name": "lastRefreshedDate",
+      "type": "LONG"
+    },
+    {
+      "name": "noRefreshed",
+      "type": "INT"
+    }
+  ]
+}

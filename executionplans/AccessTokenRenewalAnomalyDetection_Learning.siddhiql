@@ -1,0 +1,73 @@
+/* Enter a unique ExecutionPlan */
+@Plan:name('AccessTokenRenewalAnomalyDetection_Learning')
+
+/* Enter a unique description for ExecutionPlan */
+@Plan:description('Access Token Refresh Anomaly  Detection')
+
+/* define streams/tables and write queries here ... */
+
+@Import('MockAPIMRequest:1.0.0')
+define stream APIMRequest (consumerKey string, requestTime long, userId string, hostName string, accessToken string);
+
+@Export('debugAlertStream:1.0.0')
+define stream debugAlert (a long, b long);
+
+@Export('alertAccessTokenAbnormality:1.0.0')
+define stream alertStream (message string);
+
+@Export('DebugAccessTokenSummary:1.0.0')
+define stream DebugProcessed (userId string, consumerKey string, accessToken string, avrgRefreshTime long, lastRefreshedDate long, noRefreshed long);
+
+@from(eventtable = 'analytics.table', table.name = 'AccessTokenSummary', primary.keys = 'consumerKey', indices = 'userId, consumerKey, accessToken, avrgRefreshTime, lastRefreshedDate, noRefreshed')
+define table AccessTokenSummary (userId string, consumerKey string, accessToken string, avrgRefreshTime long, lastRefreshedDate long, noRefreshed long) ;
+
+
+-- The consumer key already exists
+from APIMRequest[consumerKey == AccessTokenSummary.consumerKey in AccessTokenSummary]#window.length(1) as api join AccessTokenSummary as ats
+on api.consumerKey == ats.consumerKey
+select api.userId as userId, api.consumerKey as consumerKey, api.accessToken as newAccessToken, ats.accessToken as oldAccessToken, avrgRefreshTime as oldAvrgRefreshTime, requestTime as requestTime, ats.lastRefreshedDate as lastRefreshedDate, ats.noRefreshed as noRefreshed, (ats.noRefreshed + 1 ) as newNoRefreshed
+insert into ExistingUserStream;
+
+
+--If new consumer key -  add the details to the summary table
+from APIMRequest[not (consumerKey == AccessTokenSummary.consumerKey in AccessTokenSummary)]
+--select str:concat(userId,'-NOT IN TABLE') as test
+select userId, consumerKey, accessToken, convert('0','long') as avrgRefreshTime, requestTime as lastRefreshedDate, convert('0','long') as noRefreshed
+insert into AccessTokenSummary;
+
+-- If the access token is new
+from ExistingUserStream [not (newAccessToken == oldAccessToken)]
+select userId, consumerKey, newAccessToken as accessToken, oldAvrgRefreshTime, requestTime, lastRefreshedDate, noRefreshed, newNoRefreshed
+insert into tempStream;
+
+-- Testing for the Access token update abnormalities
+from tempStream
+select oldAvrgRefreshTime, (requestTime - lastRefreshedDate) as newRefreshedTime
+insert into testAvrgRefreshTime;
+
+from testAvrgRefreshTime [(newRefreshedTime - oldAvrgRefreshTime) < 10 or  (newRefreshedTime - oldAvrgRefreshTime) > 1000]
+select "The refresh time of the token is abnormal" as message
+insert into alertStream;
+
+-- Updating the table with the current values
+from tempStream [noRefreshed == 0]
+select userId, consumerKey, accessToken, convert((requestTime - lastRefreshedDate),'long') as avrgRefreshTime, requestTime as lastRefreshedDate, newNoRefreshed as noRefreshed
+insert into AccessTokenSummary;
+
+from tempStream [not (noRefreshed == 0)]
+select userId, consumerKey, accessToken, convert((((requestTime - lastRefreshedDate) + (oldAvrgRefreshTime * noRefreshed)) / newNoRefreshed),'long') as avrgRefreshTime, requestTime as lastRefreshedDate, newNoRefreshed as noRefreshed
+insert into AccessTokenSummary;
+
+
+-- debug
+from tempStream [noRefreshed == 0]
+select userId, consumerKey, accessToken, convert((requestTime - lastRefreshedDate),'long') as avrgRefreshTime, requestTime as lastRefreshedDate, newNoRefreshed as noRefreshed
+insert into DebugProcessed;
+
+from tempStream [not (noRefreshed == 0)]
+select userId, consumerKey, accessToken, convert((((requestTime - lastRefreshedDate) + (oldAvrgRefreshTime * noRefreshed)) / newNoRefreshed),'long') as avrgRefreshTime, requestTime as lastRefreshedDate, newNoRefreshed as noRefreshed
+insert into DebugProcessed;
+
+from testAvrgRefreshTime
+select oldAvrgRefreshTime as a, newRefreshedTime as b
+insert into debugAlertStream;

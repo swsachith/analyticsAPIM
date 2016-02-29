@@ -1,0 +1,60 @@
+/* Enter a unique ExecutionPlan */
+@Plan:name('AbnormalIPAccessAlerting')
+
+/* Enter a unique description for ExecutionPlan */
+@Plan:description('Alerts if an access from an odd ip is detected')
+
+/* define streams/tables and write queries here ... */
+
+@Import('MockAPIM_ip_Request:1.0.0')
+define stream MockAPIMRequest (meta_clientType string, consumerKey string, context string, api_version string, api string, resourcePath string, method string, version string, request int, requestTime long, userId string, tenantDomain string, hostName string, apiPublisher string, applicationName string, applicationId string, userAgent string, tier string, throttledOut bool);
+
+@Export('alertIPAccessAbnormality:1.0.0')
+define stream alertStream (message string);
+
+@from(eventtable = 'analytics.table', table.name = 'IPAccessSummary', primary.keys = 'consumerKey,ip', indices = 'userId, consumerKey, ip, lastAccessedDate')
+define table IPAccessSummary (userId string, consumerKey string, ip string, lastAccessedDate long) ;
+
+-- Consumer key is already in the table
+from MockAPIMRequest[consumerKey == IPAccessSummary.consumerKey in IPAccessSummary]#window.length(1) as api left outer join IPAccessSummary as ais
+on api.consumerKey == ais.consumerKey and api.hostName == ais.ip
+select api.consumerKey as consumerKey, api.userId as userId, api.hostName as requestHostName, ais.ip as ip, api.requestTime as requestTime, ais.lastAccessedDate as lastAccessedDate, (api.requestTime - lastAccessedDate) as timeBetweenAccess
+insert into ExistingUserStream;
+
+-- New consumer key
+from MockAPIMRequest[not (consumerKey == IPAccessSummary.consumerKey in IPAccessSummary)]
+select userId, consumerKey, hostName as ip, requestTime as lastAccessedDate
+insert into IPAccessSummary;
+
+-- A new request source IP
+-- generate alert and add it to the table
+from ExistingUserStream[ip is null]
+select *
+insert into NewIPDetectedStream;
+
+from NewIPDetectedStream
+select "A request from a new IP detected!" as message
+insert into alertStream;
+
+from NewIPDetectedStream
+select userId, consumerKey, requestHostName as ip, requestTime as lastAccessedDate
+insert into IPAccessSummary;
+
+-- Check if the request for the IP is received after the threshold time gap
+from ExistingUserStream[not(ip is null)]
+select *
+insert into CheckAbnormalTimeBetweenAccessStream;
+
+from CheckAbnormalTimeBetweenAccessStream[timeBetweenAccess > 10]
+select * 
+insert into AbnormalTimeBetweenAccessStream;
+
+from AbnormalTimeBetweenAccessStream
+select "Request from an old IP is detected!" as message
+insert into alertStream;
+
+-- Update the request time for the lastAccessDate
+from CheckAbnormalTimeBetweenAccessStream
+select userId, consumerKey, requestHostName as ip, requestTime as lastAccessedDate
+insert into IPAccessSummary;
+
